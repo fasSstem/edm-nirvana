@@ -19,7 +19,7 @@ import dnnlib
 from torch_utils import distributed as dist
 from torch_utils import training_stats
 from torch_utils import misc
-from nirvana_utils import copy_out_to_snapshot, copy_snapshot_to_out
+from training.nirvana_utils import copy_out_to_snapshot
 
 #----------------------------------------------------------------------------
 
