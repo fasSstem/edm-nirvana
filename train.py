@@ -15,7 +15,7 @@ import click
 import torch
 import dnnlib
 from torch_utils import distributed as dist
-from training import training_loop
+from training import training_loop, nirvana_utils
 
 import warnings
 warnings.filterwarnings('ignore', 'Grad strides do not match bucket view strides') # False warning printed by PyTorch 1.12.
@@ -183,6 +183,10 @@ def main(**kwargs):
         desc += f'-{opts.desc}'
 
     # Pick output directory.
+    if dist.get_rank() == 0:
+        nirvana_utils.copy_snapshot_to_out(opts.outdir)
+    torch.distributed.barrier()
+
     if dist.get_rank() != 0:
         c.run_dir = None
     elif opts.nosubdir:
