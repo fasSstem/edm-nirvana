@@ -18,6 +18,7 @@ import torch
 import PIL.Image
 import dnnlib
 from torch_utils import distributed as dist
+from training import nirvana_utils
 
 #----------------------------------------------------------------------------
 # Proposed EDM sampler (Algorithm 2).
@@ -235,7 +236,9 @@ def parse_int_list(s):
 @click.option('--schedule',                help='Ablate noise schedule sigma(t)', metavar='vp|ve|linear',           type=click.Choice(['vp', 've', 'linear']))
 @click.option('--scaling',                 help='Ablate signal scaling s(t)', metavar='vp|none',                    type=click.Choice(['vp', 'none']))
 
-def main(network_pkl, outdir, subdirs, seeds, class_idx, max_batch_size, device=torch.device('cuda'), **sampler_kwargs):
+@click.option('--path_to_label_distr',     help='Label distr to sample from the model', metavar='DIR',              type=str, default=None)
+
+def main(network_pkl, outdir, subdirs, seeds, class_idx, max_batch_size, path_to_label_distr=None, device=torch.device('cuda'), **sampler_kwargs):
     """Generate random images using the techniques described in the paper
     "Elucidating the Design Space of Diffusion-Based Generative Models".
 
@@ -282,7 +285,13 @@ def main(network_pkl, outdir, subdirs, seeds, class_idx, max_batch_size, device=
         latents = rnd.randn([batch_size, net.img_channels, net.img_resolution, net.img_resolution], device=device)
         class_labels = None
         if net.label_dim:
-            class_labels = torch.eye(net.label_dim, device=device)[rnd.randint(net.label_dim, size=[batch_size], device=device)]
+            # TODO: add probs to randint according to dinov2 distr
+            if path_to_label_distr:
+                label_distr = torch.from_numpy(np.load(path_to_label_distr)).to(torch.float)
+                labels = torch.multinomial(label_distr, batch_size, replacement=True)
+            else:
+                labels = rnd.randint(net.label_dim, size=[batch_size], device=device)
+            class_labels = torch.eye(net.label_dim, device=device)[labels]
         if class_idx is not None:
             class_labels[:, :] = 0
             class_labels[:, class_idx] = 1
@@ -303,6 +312,10 @@ def main(network_pkl, outdir, subdirs, seeds, class_idx, max_batch_size, device=
                 PIL.Image.fromarray(image_np[:, :, 0], 'L').save(image_path)
             else:
                 PIL.Image.fromarray(image_np, 'RGB').save(image_path)
+
+    # Copy images to nirvana snapshot path
+    if dist.get_rank() == 0:
+        nirvana_utils.copy_out_to_snapshot(outdir)
 
     # Done.
     torch.distributed.barrier()
