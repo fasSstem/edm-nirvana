@@ -352,7 +352,9 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
         _, _, noise = noising(net, images, class_labels)
 
         # Save images.
+        print(noise.shape)
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
+        print(images_np.shape)
         for seed, image_np, label in zip(batch_seeds, images_np, labels):
             if subdirs:
                 image_dir = os.path.join(outdir, f'{seed-seed%1000:06d}') 
