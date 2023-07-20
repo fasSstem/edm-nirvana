@@ -41,7 +41,7 @@ def noising(net, img, class_labels, num_steps=256, sigma_min=0.002, sigma_max=80
     xs.append((x_next*0.5+0.5).clone())
     denoiseds.append((x_next*0.5+0.5).clone())
     
-    for i, (t_cur, t_next) in tqdm.tqdm(list(reversed(list(enumerate(zip(t_steps[1:], t_steps[:-1]))))), unit='step'): # 0, ..., N-1
+    for i, (t_cur, t_next) in list(reversed(list(enumerate(zip(t_steps[1:], t_steps[:-1]))))): # 0, ..., N-1
         x_cur = x_next
 
         # Euler step.
