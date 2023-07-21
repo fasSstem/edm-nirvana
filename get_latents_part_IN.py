@@ -94,6 +94,7 @@ def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_
     dist.print0(f'Loading network from "{network_pkl}"...')
     with dnnlib.util.open_url(network_pkl, verbose=(dist.get_rank() == 0)) as f:
         net = pickle.load(f)['ema'].to(device)
+    net.eval()
 
     # Other ranks follow.
     if dist.get_rank() == 0:
@@ -128,8 +129,8 @@ def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_
 
             # latents = rnd.randn([batch_size, net.img_channels, net.img_resolution, net.img_resolution], device=device)
             class_labels = torch.eye(net.label_dim, device=device)[labels]
-
-            _, _, noise = noising(net, imgs.to(device), class_labels)
+            with torch.no_grad():
+                _, _, noise = noising(net, imgs.to(device), class_labels)
 
             idxs = range(max_batch_size * i, max_batch_size * i + batch_size)
 
