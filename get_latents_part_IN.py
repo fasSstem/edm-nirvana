@@ -68,12 +68,9 @@ def noising(net, img, class_labels, num_steps=256, sigma_min=0.002, sigma_max=80
 def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_to_label_distr=None, device=torch.device('cuda')):
     dist.init()
 
-    dataset = ImageNet(path_to_data)
+    dataset = ImageFolder(path_to_data)
 
-    tr = transforms.Compose([
-        transforms.Resize(64), 
-        transforms.CenterCrop(64), 
-        transforms.ToTensor()])
+    tr = transforms.ToTensor()
 
     def collate_fn(x):
         imgs = []
@@ -103,41 +100,48 @@ def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_
         torch.distributed.barrier()
     
     len_data_loader = (len(dataset) + max_batch_size - 1) // max_batch_size
-    steps_by_each = len_data_loader // dist.get_world_size()
+    steps_by_each = 1000 // dist.get_world_size()
 
     # Loop over batches.
+    count_classes = torch.zeros(1000)
+
+    num_step = 0
+
     dist.print0("Finding latents for IN")
     for i, batch in tqdm.tqdm(enumerate(data_loader), unit='batch', disable=(dist.get_rank() != 0)):
         
-        batch_size = len(batch[0])
-        if batch_size == 0:
-            continue
-
-        if i % dist.get_world_size() != dist.get_rank():
-            continue
-    
-        if i < steps_by_each * dist.get_world_size():
-            torch.distributed.barrier()
-
-        # Pick latents and labels.
-
         imgs, labels = batch
-        # latents = rnd.randn([batch_size, net.img_channels, net.img_resolution, net.img_resolution], device=device)
-        class_labels = torch.eye(net.label_dim, device=device)[labels]
 
-        _, _, noise = noising(net, imgs.to(device), class_labels)
+        if labels[-1] == labels[0] and count_classes[labels[0]] < max_batch_size:
+            batch_size = len(batch[0])
+            if batch_size == 0:
+                continue
 
-        idxs = range(max_batch_size * i, max_batch_size * i + batch_size)
+            if num_step % dist.get_world_size() != dist.get_rank():
+                num_step += 1
+                continue
+        
+            if num_step < steps_by_each * dist.get_world_size():
+                torch.distributed.barrier()
 
-        for idx, noise_el, label in zip(idxs, noise, labels):
-            if subdirs_class:
-                latent_dir = os.path.join(outdir, f'{label}') 
-            else:
-                latent_dir = outdir
+            # Pick latents and labels.
 
-            os.makedirs(latent_dir, exist_ok=True)
-            latent_path = os.path.join(latent_dir, f'{idx}.pth')
-            torch.save(noise_el, latent_path)
+            # latents = rnd.randn([batch_size, net.img_channels, net.img_resolution, net.img_resolution], device=device)
+            class_labels = torch.eye(net.label_dim, device=device)[labels]
+
+            _, _, noise = noising(net, imgs.to(device), class_labels)
+
+            idxs = range(max_batch_size * i, max_batch_size * i + batch_size)
+
+            for idx, noise_el, label in zip(idxs, noise, labels):
+                if subdirs_class:
+                    latent_dir = os.path.join(outdir, f'{label:03}') 
+                else:
+                    latent_dir = outdir
+
+                os.makedirs(latent_dir, exist_ok=True)
+                latent_path = os.path.join(latent_dir, f'{idx:07}.pth')
+                torch.save(noise_el, latent_path)
 
     # Copy images to nirvana snapshot path
     if dist.get_rank() == 0:

@@ -313,6 +313,8 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
     with dnnlib.util.open_url(network_pkl, verbose=(dist.get_rank() == 0)) as f:
         net = pickle.load(f)['ema'].to(device)
 
+    net.eval()
+
     # Other ranks follow.
     if dist.get_rank() == 0:
         torch.distributed.barrier()
@@ -347,12 +349,14 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
         sampler_kwargs = {key: value for key, value in sampler_kwargs.items() if value is not None}
         have_ablation_kwargs = any(x in sampler_kwargs for x in ['solver', 'discretization', 'schedule', 'scaling'])
         sampler_fn = ablation_sampler if have_ablation_kwargs else edm_sampler
-        images = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, **sampler_kwargs)
+        with torch.no_grad():
+            images = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, **sampler_kwargs)
 
-        _, _, noise = noising(net, images, class_labels)
+            _, _, noise = noising(net, images, class_labels)
 
         # Save images.
         print(noise.shape)
+        noise = noise.cpu()
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
         print(images_np.shape)
         for seed, image_np, label in zip(batch_seeds, images_np, labels):
@@ -375,7 +379,7 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
             if subdirs:
                 latent_dir = os.path.join(outdir_latents, f'{seed-seed%1000:06d}') 
             elif subdirs_class:
-                latent_dir = os.path.join(outdir_latents, f'{label}') 
+                latent_dir = os.path.join(outdir_latents, f'{label:03}') 
             else:
                 latent_dir = outdir_latents
 
