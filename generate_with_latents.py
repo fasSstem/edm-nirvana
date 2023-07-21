@@ -363,7 +363,7 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
             if subdirs:
                 image_dir = os.path.join(outdir, f'{seed-seed%1000:06d}') 
             elif subdirs_class:
-                image_dir = os.path.join(outdir, f'{label}') 
+                image_dir = os.path.join(outdir, f'{label:03}') 
             else:
                 image_dir = outdir
 
@@ -385,8 +385,7 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
 
             os.makedirs(latent_dir, exist_ok=True)
             latent_path = os.path.join(latent_dir, f'{seed:06d}.pth')
-            print(latent.shape)
-            torch.save(latent, latent_path)
+            torch.save(latent.clone(), latent_path)
 
     # Copy images to nirvana snapshot path
     # if dist.get_rank() == 0:

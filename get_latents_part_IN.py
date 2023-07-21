@@ -142,7 +142,7 @@ def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_
 
                 os.makedirs(latent_dir, exist_ok=True)
                 latent_path = os.path.join(latent_dir, f'{idx:07}.pth')
-                torch.save(noise_el, latent_path)
+                torch.save(noise_el.clone(), latent_path)
 
     # Copy images to nirvana snapshot path
     if dist.get_rank() == 0:
