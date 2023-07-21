@@ -375,7 +375,7 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
                 PIL.Image.fromarray(image_np, 'RGB').save(image_path)
 
         # Save latents.
-        for seed, image_np, label in zip(batch_seeds, noise, labels):
+        for seed, latent, label in zip(batch_seeds, noise, labels):
             if subdirs:
                 latent_dir = os.path.join(outdir_latents, f'{seed-seed%1000:06d}') 
             elif subdirs_class:
@@ -384,8 +384,9 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
                 latent_dir = outdir_latents
 
             os.makedirs(latent_dir, exist_ok=True)
-            latent_path = os.path.join(latent_dir, f'{seed:06d}.png')
-            torch.save(image_np, latent_path)
+            latent_path = os.path.join(latent_dir, f'{seed:06d}.pth')
+            print(latent.shape)
+            torch.save(latent, latent_path)
 
     # Copy images to nirvana snapshot path
     # if dist.get_rank() == 0:
