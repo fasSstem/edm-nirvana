@@ -388,9 +388,9 @@ def main(network_pkl, outdir, outdir_latents, subdirs, subdirs_class, seeds, cla
             torch.save(latent.clone(), latent_path)
 
     # Copy images to nirvana snapshot path
-    # if dist.get_rank() == 0:
-    #     nirvana_utils.copy_out_to_snapshot(outdir)
-    #     nirvana_utils.copy_out_to_snapshot(outdir_latents)
+    if dist.get_rank() == 0:
+        nirvana_utils.copy_out_to_snapshot(outdir)
+        nirvana_utils.copy_out_to_snapshot(outdir_latents)
 
     # Done.
     torch.distributed.barrier()
