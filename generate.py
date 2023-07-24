@@ -26,7 +26,7 @@ from training import nirvana_utils
 def edm_sampler(
     net, latents, class_labels=None, randn_like=torch.randn_like,
     num_steps=18, sigma_min=0.002, sigma_max=80, rho=7,
-    S_churn=0, S_min=0, S_max=float('inf'), S_noise=1,
+    S_churn=0, S_min=0, S_max=float('inf'), S_noise=1, wo_last=False
 ):
     # Adjust noise levels based on what's supported by the network.
     sigma_min = max(sigma_min, net.sigma_min)
@@ -40,6 +40,8 @@ def edm_sampler(
     # Main sampling loop.
     x_next = latents.to(torch.float64) * t_steps[0]
     for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])): # 0, ..., N-1
+        if wo_last and i == num_steps - 1:
+            continue
         x_cur = x_next
 
         # Increase noise temporarily.
@@ -219,6 +221,8 @@ def parse_int_list(s):
 @click.option('--outdir',                  help='Where to save the output images', metavar='DIR',                   type=str, required=True)
 @click.option('--seeds',                   help='Random seeds (e.g. 1,2,5-10)', metavar='LIST',                     type=parse_int_list, default='0-63', show_default=True)
 @click.option('--subdirs',                 help='Create subdirectory for every 1000 seeds',                         is_flag=True)
+@click.option('--subdirs_class',           help='Create subdirectory for every class',                              is_flag=True)
+@click.option('--wo_last',                 help='Stop at T=2e-3',                                                   is_flag=True)
 @click.option('--class', 'class_idx',      help='Class label  [default: random]', metavar='INT',                    type=click.IntRange(min=0), default=None)
 @click.option('--batch', 'max_batch_size', help='Maximum batch size', metavar='INT',                                type=click.IntRange(min=1), default=64, show_default=True)
 
@@ -238,7 +242,7 @@ def parse_int_list(s):
 
 @click.option('--path_to_label_distr',     help='Label distr to sample from the model', metavar='DIR',              type=str, default=None)
 
-def main(network_pkl, outdir, subdirs, seeds, class_idx, max_batch_size, path_to_label_distr=None, device=torch.device('cuda'), **sampler_kwargs):
+def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx, max_batch_size, path_to_label_distr=None, device=torch.device('cuda'), **sampler_kwargs):
     """Generate random images using the techniques described in the paper
     "Elucidating the Design Space of Diffusion-Based Generative Models".
 
@@ -284,6 +288,7 @@ def main(network_pkl, outdir, subdirs, seeds, class_idx, max_batch_size, path_to
         rnd = StackedRandomGenerator(device, batch_seeds)
         latents = rnd.randn([batch_size, net.img_channels, net.img_resolution, net.img_resolution], device=device)
         class_labels = None
+        labels = None
         if net.label_dim:
             # TODO: add probs to randint according to dinov2 distr
             if path_to_label_distr:
@@ -300,12 +305,18 @@ def main(network_pkl, outdir, subdirs, seeds, class_idx, max_batch_size, path_to
         sampler_kwargs = {key: value for key, value in sampler_kwargs.items() if value is not None}
         have_ablation_kwargs = any(x in sampler_kwargs for x in ['solver', 'discretization', 'schedule', 'scaling'])
         sampler_fn = ablation_sampler if have_ablation_kwargs else edm_sampler
-        images = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, **sampler_kwargs)
+        images = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, wo_last=wo_last, **sampler_kwargs)
 
         # Save images.
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
-        for seed, image_np in zip(batch_seeds, images_np):
-            image_dir = os.path.join(outdir, f'{seed-seed%1000:06d}') if subdirs else outdir
+        for seed, image_np, label in zip(batch_seeds, images_np, labels):
+            if subdirs:
+                image_dir = os.path.join(outdir, f'{seed-seed%1000:06d}') 
+            elif subdirs_class:
+                image_dir = os.path.join(outdir, f'{label}') 
+            else:
+                image_dir = outdir
+
             os.makedirs(image_dir, exist_ok=True)
             image_path = os.path.join(image_dir, f'{seed:06d}.png')
             if image_np.shape[2] == 1:
