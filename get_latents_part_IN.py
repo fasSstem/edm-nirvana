@@ -113,7 +113,6 @@ def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_
         imgs, labels = batch
 
         if labels[-1] == labels[0] and count_classes[labels[0]] < max_batch_size:
-            print(labels[-1], 1000)
             count_classes[labels[0]] += max_batch_size
             batch_size = len(batch[0])
             if batch_size == 0:
@@ -122,7 +121,9 @@ def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_
             if num_step % dist.get_world_size() != dist.get_rank():
                 num_step += 1
                 continue
-        
+                    
+            print(labels[-1], 1000)
+
             if num_step < steps_by_each * dist.get_world_size():
                 torch.distributed.barrier()
 
