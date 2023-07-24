@@ -126,7 +126,7 @@ def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_
 
             if num_step < steps_by_each * dist.get_world_size():
                 torch.distributed.barrier()
-            num_steps += 1
+            num_step += 1
 
             # Pick latents and labels.
 
