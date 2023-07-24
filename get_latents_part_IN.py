@@ -35,7 +35,7 @@ def noising(net, img, class_labels, num_steps=256, sigma_min=0.002, sigma_max=80
     xs.append((x_next*0.5+0.5).clone())
     denoiseds.append((x_next*0.5+0.5).clone())
     
-    for i, (t_cur, t_next) in tqdm.tqdm(list(reversed(list(enumerate(zip(t_steps[1:], t_steps[:-1]))))), unit='step'): # 0, ..., N-1
+    for i, (t_cur, t_next) in list(reversed(list(enumerate(zip(t_steps[1:], t_steps[:-1]))))): # 0, ..., N-1
         x_cur = x_next
 
         # Euler step.
@@ -110,10 +110,11 @@ def main(network_pkl, outdir, subdirs_class, max_batch_size, path_to_data, path_
 
     dist.print0("Finding latents for IN")
     for i, batch in tqdm.tqdm(enumerate(data_loader), unit='batch', disable=(dist.get_rank() != 0)):
-        
         imgs, labels = batch
 
         if labels[-1] == labels[0] and count_classes[labels[0]] < max_batch_size:
+            print(labels[-1], 1000)
+            count_classes[labels[0]] += max_batch_size
             batch_size = len(batch[0])
             if batch_size == 0:
                 continue
