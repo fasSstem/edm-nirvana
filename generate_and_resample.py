@@ -41,7 +41,7 @@ def noising(net, img, class_labels, num_steps=100, sigma_min=0.002, sigma_max=80
     xs.append((x_next*0.5+0.5).clone())
     denoiseds.append((x_next*0.5+0.5).clone())
     
-    for i, (t_cur, t_next) in tqdm.tqdm(list(reversed(list(enumerate(zip(t_steps[1:], t_steps[:-1]))))), unit='step'): # 0, ..., N-1
+    for i, (t_cur, t_next) in list(reversed(list(enumerate(zip(t_steps[1:], t_steps[:-1]))))): # 0, ..., N-1
         if wo_last and i == num_steps - 1:
             continue
         x_cur = x_next
@@ -355,7 +355,7 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx,
         img = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, wo_last=wo_last, **sampler_kwargs)
 
         _, _, lat = noising(net, img * 0.5 + 0.5, class_labels, num_steps=num_resample_steps, wo_last=wo_last)
-        _, _, images = sampler_fn(net, lat, class_labels, num_steps=num_resample_steps, wo_last=wo_last)
+        images = sampler_fn(net, lat, class_labels, num_steps=num_resample_steps, wo_last=wo_last)
 
         # Save images.
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
