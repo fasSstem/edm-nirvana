@@ -355,7 +355,7 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx,
         img = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, wo_last=wo_last, **sampler_kwargs)
 
         _, _, lat = noising(net, img * 0.5 + 0.5, class_labels, num_steps=num_resample_steps, wo_last=wo_last)
-        images = sampler_fn(net, lat, class_labels, num_steps=num_resample_steps, wo_last=wo_last)
+        images = sampler_fn(net, lat / 80, class_labels, num_steps=num_resample_steps, wo_last=wo_last)
 
         # Save images.
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
