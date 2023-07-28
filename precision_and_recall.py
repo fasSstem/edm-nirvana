@@ -68,15 +68,7 @@ def main(network_pkl, real_dir, gen_dir, num_neigh):
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                             std=[0.229, 0.224, 0.225])])
 
-    tr_resize = transforms.Compose([
-        transforms.Resize(64), 
-        transforms.CenterCrop(64),
-        transforms.ToTensor(),
-        transforms.Resize(224),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                            std=[0.229, 0.224, 0.225])])
-
-    real_dl = DataLoader(real, collate_fn=get_collate_fn(tr_resize), batch_size=100, shuffle=False, num_workers=16)
+    real_dl = DataLoader(real, collate_fn=get_collate_fn(tr), batch_size=100, shuffle=False, num_workers=16)
     gen_dl = DataLoader(gen, collate_fn=get_collate_fn(tr), batch_size=100, shuffle=False, num_workers=16)
 
     real_embs = []
