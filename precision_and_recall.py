@@ -16,7 +16,7 @@ import tqdm
 from copy import deepcopy
 from torchvision.datasets import ImageFolder
 import pickle
-
+from timm import create_model
 
 def get_collate_fn(trans):
     
@@ -47,20 +47,28 @@ def get_precision_and_recall(real_embs, gen_embs, k):
 
 
 @click.command()
-@click.option('--network', 'network_pkl',  help='Network pickle filename', metavar='PATH|URL',                      type=str, required=True)
+@click.option('--network', 'network_path',  help='Network path', metavar='PATH|URL',                                type=str, required=True)
+@click.option('--is_vgg',                  help='Is model vgg or dinov2',                                           is_flag=True)
 @click.option('--real_dir',                help='Where are real images', metavar='DIR',                             type=str, required=True)
 @click.option('--gen_dir',                 help='Where are gen images', metavar='DIR',                              type=str, required=True)
 @click.option('--num_neigh',               help='Parameter k', metavar='DIR',                                       type=click.IntRange(min=1), default=3, show_default=True)
 
 
-def main(network_pkl, real_dir, gen_dir, num_neigh):
+def main(network_path, is_vgg, real_dir, gen_dir, num_neigh):
     real = ImageFolder(real_dir)
     gen = ImageFolder(gen_dir)
 
-    with open(network_pkl, 'rb') as handle:
-        model = pickle.load(handle)
-    model.eval()
-    model.cuda()
+
+    if is_vgg:
+        with open(network_path, 'rb') as handle:
+            model = pickle.load(handle)
+        model.eval()
+        model.cuda()
+    else:
+        model = create_model('vit_large_patch14_dinov2')
+        model.load_state_dict(torch.load(network_path))
+        model.cuda()
+        model.eval()
 
     tr = transforms.Compose([
         transforms.ToTensor(),
