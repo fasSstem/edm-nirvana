@@ -65,7 +65,8 @@ def main(network_path, is_vgg, real_dir, gen_dir, num_neigh):
         model.eval()
         model.cuda()
     else:
-        model = create_model('vit_large_patch14_dinov2')
+        model = create_model('beitv2_large_patch16_224')
+        model.head = nn.Identity()
         model.load_state_dict(torch.load(network_path))
         model.cuda()
         model.eval()
