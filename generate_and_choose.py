@@ -153,7 +153,7 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, use_realism_1, se
         images_ns = []
         realism_1, realism_2 = [], []
         for ns in dif_ns:
-            images_el = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, wo_last=wo_last, **sampler_kwargs)
+            images_el = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, wo_last=wo_last, num_steps=ns, **sampler_kwargs)
             images_ns.append(images_el)
             realism_1_el, realism_2_el = get_realism_score(images_el)
             realism_1.append(realism_1_el)
@@ -161,7 +161,10 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, use_realism_1, se
         realism_1 = torch.stack(realism_1)
         realism_2 = torch.stack(realism_2)
         images_ns = torch.stack(images_ns)
-        num = (realism_1 if use_realism_1 else realism_2).argmax(dim=0)
+        if use_realism_1:
+            num = realism_1.argmax(dim=0)
+        else:
+            num = realism_2.argmin(dim=0)
 
         all_num_steps += [dif_ns[ind] for ind in num]
 
