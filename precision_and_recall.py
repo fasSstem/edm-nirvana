@@ -62,6 +62,9 @@ def main(network_path, is_vgg, real_dir, gen_dir, num_neigh):
     if is_vgg:
         with open(network_path, 'rb') as handle:
             model = pickle.load(handle)
+
+        if 'inception' in network_path:
+            model.output = nn.Identity()
         model.eval()
         model.cuda()
     else:
