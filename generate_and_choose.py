@@ -74,7 +74,7 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, use_realism_1, se
     all_batches = torch.as_tensor(seeds).tensor_split(num_batches)
     rank_batches = all_batches[dist.get_rank() :: dist.get_world_size()]
 
-    dif_ns = [256, 128, 40, 16, 8]
+    dif_ns = [128, 80, 60, 40, 20]
 
     beit = create_model('beitv2_large_patch16_224')
     network_path = 'beitv2l.pth'
