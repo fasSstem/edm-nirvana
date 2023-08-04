@@ -26,7 +26,7 @@ from training import nirvana_utils
 def edm_sampler(
     net, latents, class_labels=None, randn_like=torch.randn_like,
     num_steps=18, sigma_min=0.002, sigma_max=80, rho=7,
-    S_churn=0, S_min=0, S_max=float('inf'), S_noise=1, wo_last=False
+    S_churn=0, S_min=0, S_max=float('inf'), S_noise=1, wo_last=False, det_part=0.5
 ):
     # Adjust noise levels based on what's supported by the network.
     sigma_min = max(sigma_min, net.sigma_min)
@@ -46,7 +46,7 @@ def edm_sampler(
 
         # Increase noise temporarily.
         gamma = min(S_churn / num_steps, np.sqrt(2) - 1) if S_min <= t_cur <= S_max else 0
-        if i < num_steps//2:
+        if i < det_part * num_steps:
             t_hat = t_cur
         else:
             t_hat = net.round_sigma(t_cur + gamma * t_cur)
@@ -228,6 +228,8 @@ def parse_int_list(s):
 @click.option('--wo_last',                 help='Stop at T=2e-3',                                                   is_flag=True)
 @click.option('--class', 'class_idx',      help='Class label  [default: random]', metavar='INT',                    type=click.IntRange(min=0), default=None)
 @click.option('--batch', 'max_batch_size', help='Maximum batch size', metavar='INT',                                type=click.IntRange(min=1), default=64, show_default=True)
+@click.option('--det_part',                help='Part of gen traj with determ', metavar='FLOAT',                    type=click.FloatRange(min=0, min_open=True))
+
 
 @click.option('--steps', 'num_steps',      help='Number of sampling steps', metavar='INT',                          type=click.IntRange(min=1), default=18, show_default=True)
 @click.option('--sigma_min',               help='Lowest noise level  [default: varies]', metavar='FLOAT',           type=click.FloatRange(min=0, min_open=True))
@@ -245,7 +247,7 @@ def parse_int_list(s):
 
 @click.option('--path_to_label_distr',     help='Label distr to sample from the model', metavar='DIR',              type=str, default=None)
 
-def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx, max_batch_size, path_to_label_distr=None, device=torch.device('cuda'), **sampler_kwargs):
+def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx, max_batch_size, det_part, path_to_label_distr=None, device=torch.device('cuda'), **sampler_kwargs):
     """Generate random images using the techniques described in the paper
     "Elucidating the Design Space of Diffusion-Based Generative Models".
 
@@ -308,7 +310,7 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx,
         sampler_kwargs = {key: value for key, value in sampler_kwargs.items() if value is not None}
         have_ablation_kwargs = any(x in sampler_kwargs for x in ['solver', 'discretization', 'schedule', 'scaling'])
         sampler_fn = ablation_sampler if have_ablation_kwargs else edm_sampler
-        images = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, wo_last=wo_last, **sampler_kwargs)
+        images = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, wo_last=wo_last, det_part=det_part, **sampler_kwargs)
 
         # Save images.
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
