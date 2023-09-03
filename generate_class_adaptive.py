@@ -40,6 +40,8 @@ def sampler(net, latents, class_labels, t_steps, sigma_first = torch.tensor(80.0
     batch_size = latents.shape[0]
     
     num_steps = len(t_steps) + 1
+    sigma_first = sigma_first.to(latents.device)
+    sigma_last = sigma_last.to(latents.device)
 
     # Time step discretization.
 
