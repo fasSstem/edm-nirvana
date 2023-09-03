@@ -301,7 +301,7 @@ def main(network_pkl, outdir, subdirs, subdirs_class, seeds, class_idx, max_batc
         have_ablation_kwargs = any(x in sampler_kwargs for x in ['solver', 'discretization', 'schedule', 'scaling'])
         sampler_fn = ablation_sampler if have_ablation_kwargs else sampler
 
-        images = sampler_fn(net, latents, class_labels, sigmas)
+        images = sampler_fn(net, latents, class_labels, sigmas.to(device))
 
         # Save images.
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
