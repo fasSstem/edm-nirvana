@@ -10,6 +10,7 @@ set -e
 mkdir sigmas_dir
 
 for i in 0 1 2 3 4 5 6 7
+do
 CUDA_VISIBLE_DEVICES=$i python -m tuning_sigmas --index=$i --outdir=sigmas_dir --path_imagenet=gen_imagenet --path_sigmas_start=sigmas_tuned_eq.pt --path_edm=pretrained/edm-imagenet-64x64-cond-adm.pkl --epochs=4 &
 done
 wait
