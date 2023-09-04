@@ -262,7 +262,7 @@ def main(network_pkl, outdir, subdirs, subdirs_class, seeds, class_idx, max_batc
     all_classes = torch.arange(1000)
     rank_classes = all_classes[dist.get_rank() :: dist.get_world_size()]
 
-    all_sigmas = torch.load(sigmas_path)
+    all_sigmas = torch.load(sigmas_path).detach()
     rank_sigmas = all_sigmas[dist.get_rank() :: dist.get_world_size()]
 
 
