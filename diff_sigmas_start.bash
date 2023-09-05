@@ -11,7 +11,7 @@ mkdir sigmas_dir
 
 for i in 0 1 2 3 4 5 6 7 8 9 10
 do
-torchrun --standalone --nproc_per_node=8 generate_class_adaptive.py --outdir=fid-tmp-$i --steps=8 --batch=50 --seeds=0-49999 --subdirs --network=pretrained/edm-imagenet-64x64-cond-adm.pkl --sigmas=sigmas_tuned_equal/$i.pt
+torchrun --standalone --nproc_per_node=8 generate_class_adaptive.py --outdir=fid-tmp-$i --steps=8 --batch=50 --seeds=0-49999 --subdirs --network=pretrained/edm-imagenet-64x64-cond-adm.pkl --sigmas=$1/$i.pt
 
 echo "run_number_$i"
 # Calculate FID
