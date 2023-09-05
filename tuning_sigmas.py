@@ -116,7 +116,7 @@ def main(index, outdir, path_alex, path_imagenet, path_sigmas_start, path_edm, e
     sigmas_start = torch.load(path_sigmas_start)[0].detach()
 
     sigmas_10_all = torch.zeros(125, 7)
-    loss_fn_alex = lpips.LPIPS(net='alex', model_path=path_alex) # best forward scores
+    loss_fn_alex = lpips.LPIPS(net='alex', model_path=path_alex, pnet_rand=True) # best forward scores
     loss_fn_alex.cuda()
     loss_fn_alex = loss_fn_alex.double()
     bs = 10
