@@ -94,13 +94,13 @@ def change_sigmas(sigmas):
 @click.command()
 @click.option('--index',                   help='Index of process', metavar='INT',                                  type=click.IntRange(min=0), required=True)
 @click.option('--outdir',                  help='Where to save sigmas', metavar='DIR',                              type=str, required=True)
-# @click.option('--path_alex',               help='path to alexnet', metavar='DIR',                                   type=str, required=True)
+@click.option('--path_alex',               help='path to alexnet', metavar='DIR',                                   type=str, required=True)
 @click.option('--path_imagenet',           help='path to imagenet dir', metavar='DIR',                              type=str, required=True)
 @click.option('--path_sigmas_start',       help='path to sigmas start', metavar='DIR',                              type=str, required=True)
 @click.option('--path_edm',                help='path to edm', metavar='DIR',                                       type=str, required=True)
 @click.option('--epochs',                  help='num of epochs', metavar='INT',                                     type=click.IntRange(min=0), required=True)
 
-def main(index, outdir, path_imagenet, path_sigmas_start, path_edm, epochs):
+def main(index, outdir, path_alex, path_imagenet, path_sigmas_start, path_edm, epochs):
     device = 'cuda'
     with open(path_edm, 'rb') as f:
         model = pickle.load(f)['ema'].to(device)
@@ -116,7 +116,7 @@ def main(index, outdir, path_imagenet, path_sigmas_start, path_edm, epochs):
     sigmas_start = torch.load(path_sigmas_start)[0].detach()
 
     sigmas_10_all = torch.zeros(125, 7)
-    loss_fn_alex = lpips.LPIPS(net='alex') # , model_path=path_alex) # best forward scores
+    loss_fn_alex = lpips.LPIPS(net='alex', model_path=path_alex) # best forward scores
     loss_fn_alex.cuda()
     loss_fn_alex = loss_fn_alex.double()
     bs = 10
