@@ -9,7 +9,7 @@ from PIL import Image
 from matplotlib import pyplot as plt
 import numpy as np
 import os
-from tqdm import tqdm
+import tqdm
 from copy import deepcopy
 import pickle
 import dnnlib
