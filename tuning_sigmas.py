@@ -129,7 +129,7 @@ def main(index, outdir, path_alex, path_imagenet, path_sigmas_start, path_edm, e
         data = DataLoader(dataset, shuffle=True, batch_size=bs, num_workers=8)
         classes = torch.ones(size=[bs], device=device, dtype=int) * cl
         class_labels = torch.eye(model.label_dim, device=device)[classes]
-        for epoch in epochs:
+        for epoch in range(epochs):
             for i, batch in tqdm.tqdm(enumerate(data), total=50):
                 ref_imgs, _, latents = batch
                 img_gen = denoising(model, latents.cuda(), class_labels, sigmas_10)
