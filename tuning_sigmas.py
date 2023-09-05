@@ -130,7 +130,7 @@ def main(index, outdir, path_alex, path_imagenet, path_sigmas_start, path_edm, e
         classes = torch.ones(size=[bs], device=device, dtype=int) * cl
         class_labels = torch.eye(model.label_dim, device=device)[classes]
         for epoch in range(epochs):
-            for i, batch in tqdm.tqdm(enumerate(data), total=50):
+            for i, batch in tqdm.tqdm(enumerate(data), total=100):
                 ref_imgs, _, latents = batch
                 img_gen = denoising(model, latents.cuda(), class_labels, sigmas_10)
                 loss = loss_fn_alex(img_gen, ref_imgs.cuda()).mean() # loss_func(img_10_cur, img_256)
