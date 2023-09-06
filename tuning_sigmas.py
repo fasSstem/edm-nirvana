@@ -117,7 +117,7 @@ def main(index, outdir, path_alex, is_alex, path_imagenet, path_sigmas_start, pa
 
     sigmas_start = torch.load(path_sigmas_start)[0].detach()
 
-    sigmas_10_all = torch.zeros(125, 7)
+    sigmas_10_all = torch.zeros(125, 8, 7)
     loss_fn_alex = lpips.LPIPS(net=('alex' if is_alex else 'vgg'), model_path=path_alex, pnet_rand=True) # best forward scores
     loss_fn_alex.cuda()
     loss_fn_alex = loss_fn_alex.double()
@@ -140,7 +140,8 @@ def main(index, outdir, path_alex, is_alex, path_imagenet, path_sigmas_start, pa
                 loss.backward()
                 change_grad_sigmas(sigmas_10)
                 optim.step()
-        sigmas_10_all[cl - 125 * index] = sigmas_10
+                if i % 50 == 49:
+                    sigmas_10_all[cl - 125 * index, i // 50 + epoch * 2] = sigmas_10
         torch.save(sigmas_10_all, f'{outdir}/sigmas_classes_{index}.pt')
     
     nirvana_utils.copy_out_to_snapshot(outdir)

@@ -12,6 +12,10 @@ def main(outdir):
         tens.append(torch.load(f'{outdir}/{file}'))
     tens = torch.cat(tens)
     torch.save(tens, f'{outdir}/sigmas_classes.pt')
+    os.mkdir('sigmas_for_fid')
+    for i in range(8):
+        sigmas_i = tens[:, i]
+        torch.save(sigmas_i, f'sigmas_for_fid/{i}.pt')
     nirvana_utils.copy_out_to_snapshot(outdir)
 
 
