@@ -21,7 +21,7 @@ from cm.script_util import (
     args_to_dict,
 )
 from cm.random_util import get_generator
-from cm.karras_diffusion import stochastic_iterative_sampler
+from cm.karras_diffusion import sample_euler, get_sigmas_karras
 from evaluations.th_evaluator import FIDAndIS
 
 
@@ -89,16 +89,21 @@ def main():
                 * args.sigma_max
             )
 
-            sample = stochastic_iterative_sampler(
+
+            sigmas_all = get_sigmas_karras(args.steps, 
+                                       args.sigma_min, 
+                                       args.sigma_max, 
+                                       diffusion.rho, 
+                                       device=dist_util.dev())
+
+            sigmas = th.stack([sigmas_all[t] for t in ts])
+            sample = sample_euler(
                 denoiser,
                 x_T,
-                ts,
-                t_min=args.sigma_min,
-                t_max=args.sigma_max,
-                rho=diffusion.rho,
-                steps=args.steps,
-                generator=generator,
+                sigmas,
+                generator,
             )
+
             pred, spatial_pred, clip_pred, text_pred, _ = fid_is.get_preds(sample)
 
             sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)

@@ -95,12 +95,12 @@ class FIDAndIS:
 
         if dist.get_rank() % 8 == 0:
             clip_model, self.clip_preproc_fn = clip.load(
-                "ViT-B/32", device=dist_util.dev()
+                "ViT-B/32", device=dist_util.dev(), download_root='clip.pt' 
             )
         dist.barrier()
         if dist.get_rank() % 8 != 0:
             clip_model, self.clip_preproc_fn = clip.load(
-                "ViT-B/32", device=dist_util.dev()
+                "ViT-B/32", device=dist_util.dev(), download_root='clip.pt'
             )
         dist.barrier()
 
