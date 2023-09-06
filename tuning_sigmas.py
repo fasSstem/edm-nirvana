@@ -124,7 +124,7 @@ def main(index, outdir, path_alex, is_alex, path_imagenet, path_sigmas_start, pa
     bs = 10
     for cl in range(125 * index, 125 * (index + 1)):
         print(cl)
-        sigmas_10 = sigmas_start.clone()
+        sigmas_10 = sigmas_start.clone().cuda()
         sigmas_10.requires_grad = True
         optim = torch.optim.Adam([sigmas_10], lr=lr)
         dataset = CustomDataset(path_imagenet+f'{cl:04}/', latents_1000)
