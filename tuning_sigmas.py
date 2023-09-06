@@ -100,8 +100,9 @@ def change_sigmas(sigmas):
 @click.option('--path_sigmas_start',       help='path to sigmas start', metavar='DIR',                              type=str, required=True)
 @click.option('--path_edm',                help='path to edm', metavar='DIR',                                       type=str, required=True)
 @click.option('--epochs',                  help='num of epochs', metavar='INT',                                     type=click.IntRange(min=0), required=True)
+@click.option('--lr',                      help='learning_rate', metavar='FLOAT',                                   type=float, default=1e-2, show_default=True)
 
-def main(index, outdir, path_alex, is_alex, path_imagenet, path_sigmas_start, path_edm, epochs):
+def main(index, outdir, path_alex, is_alex, path_imagenet, path_sigmas_start, path_edm, epochs, lr):
     device = 'cuda'
     with open(path_edm, 'rb') as f:
         model = pickle.load(f)['ema'].to(device)
@@ -125,7 +126,7 @@ def main(index, outdir, path_alex, is_alex, path_imagenet, path_sigmas_start, pa
         print(cl)
         sigmas_10 = sigmas_start.clone()
         sigmas_10.requires_grad = True
-        optim = torch.optim.Adam([sigmas_10], lr=1e-2)
+        optim = torch.optim.Adam([sigmas_10], lr=lr)
         dataset = CustomDataset(path_imagenet+f'{cl:04}/', latents_1000)
         data = DataLoader(dataset, shuffle=True, batch_size=bs, num_workers=8)
         classes = torch.ones(size=[bs], device=device, dtype=int) * cl
