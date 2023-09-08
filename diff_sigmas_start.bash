@@ -7,7 +7,6 @@
 #SBATCH --output=slurm_logs/%j_%n_%x.txt
 
 set -e
-mkdir sigmas_dir
 
 for (( i=0; i<=$2; i++))
 do
