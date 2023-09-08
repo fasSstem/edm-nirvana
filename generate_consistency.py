@@ -19,6 +19,8 @@ import PIL.Image
 import dnnlib
 from torch_utils import distributed as dist
 from training import nirvana_utils
+from consistency_models.cm.unet import UNetModel
+from consistency_models.cm.karras_diffusion import KarrasDenoiser
 
 #----------------------------------------------------------------------------
 # Proposed EDM sampler (Algorithm 2).
@@ -29,16 +31,14 @@ def edm_sampler(
     S_churn=0, S_min=0, S_max=float('inf'), S_noise=1, wo_last=False
 ):
     # Adjust noise levels based on what's supported by the network.
-    sigma_min = max(sigma_min, net.sigma_min)
-    sigma_max = min(sigma_max, net.sigma_max)
 
     # Time step discretization.
     step_indices = torch.arange(num_steps, dtype=torch.float64, device=latents.device)
     t_steps = (sigma_max ** (1 / rho) + step_indices / (num_steps - 1) * (sigma_min ** (1 / rho) - sigma_max ** (1 / rho))) ** rho
-    t_steps = torch.cat([net.round_sigma(t_steps), torch.zeros_like(t_steps[:1])]) # t_N = 0
+    t_steps = torch.cat([t_steps, torch.zeros_like(t_steps[:1])]).float() # t_N = 0
 
     # Main sampling loop.
-    x_next = latents.to(torch.float64) * t_steps[0]
+    x_next = latents * t_steps[0]
     for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])): # 0, ..., N-1
         if wo_last and i == num_steps - 1:
             continue
@@ -46,17 +46,17 @@ def edm_sampler(
 
         # Increase noise temporarily.
         gamma = min(S_churn / num_steps, np.sqrt(2) - 1) if S_min <= t_cur <= S_max else 0
-        t_hat = net.round_sigma(t_cur + gamma * t_cur)
+        t_hat = t_cur + gamma * t_cur
         x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
 
         # Euler step.
-        denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
+        denoised = net(x_hat, t_hat, class_labels) #.to(torch.float64)
         d_cur = (x_hat - denoised) / t_hat
         x_next = x_hat + (t_next - t_hat) * d_cur
 
         # Apply 2nd order correction.
         if i < num_steps - 1:
-            denoised = net(x_next, t_next, class_labels).to(torch.float64)
+            denoised = net(x_next, t_next, class_labels) #.to(torch.float64)
             d_prime = (x_next - denoised) / t_next
             x_next = x_hat + (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
 
@@ -269,8 +269,35 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx,
 
     # Load network.
     dist.print0(f'Loading network from "{network_pkl}"...')
-    with dnnlib.util.open_url(network_pkl, verbose=(dist.get_rank() == 0)) as f:
-        net = pickle.load(f)['ema'].to(device)
+    model_cons = UNetModel(
+        image_size=64,
+        in_channels=3,
+        model_channels=192,
+        out_channels=3,
+        num_res_blocks=3,
+        attention_resolutions=[2.0, 4.0, 8.0],
+        dropout=0,
+        channel_mult=(1, 2, 3, 4),
+        num_classes=1000,
+        use_checkpoint=False,
+        use_fp16=False,
+        num_heads=4,
+        num_head_channels=64,
+        num_heads_upsample=-1,
+        use_scale_shift_norm=True,
+        resblock_updown=True,
+        use_new_attention_order=False,
+    )
+
+    model_cons.load_state_dict(torch.load(network_pkl))
+    model_cons.eval()
+    model_cons.cuda()
+    model_cons.convert_to_fp32()
+    diff = KarrasDenoiser(sigma_data=0.5, sigma_max=80, sigma_min=0.002, distillation=False, weight_schedule='karras')
+
+    def model_cons_forw(x_t, sigma, class_labels):
+        sigma_fl = sigma[None].repeat(len(x_t))
+        return diff.denoise(model_cons, x_t, sigma_fl, y=class_labels)[1]
 
     # Other ranks follow.
     if dist.get_rank() == 0:
@@ -286,17 +313,17 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx,
 
         # Pick latents and labels.
         rnd = StackedRandomGenerator(device, batch_seeds)
-        latents = rnd.randn([batch_size, net.img_channels, net.img_resolution, net.img_resolution], device=device)
+        latents = rnd.randn([batch_size, 3, 64, 64], device=device)
         class_labels = None
         labels = None
-        if net.label_dim:
+        if True:
             # TODO: add probs to randint according to dinov2 distr
             if path_to_label_distr:
                 label_distr = torch.from_numpy(np.load(path_to_label_distr)).to(torch.float)
                 labels = torch.multinomial(label_distr, batch_size, replacement=True)
             else:
-                labels = rnd.randint(net.label_dim, size=[batch_size], device=device)
-            class_labels = torch.eye(net.label_dim, device=device)[labels]
+                labels = rnd.randint(1000, size=[batch_size], device=device)
+            class_labels = torch.eye(1000, device=device)[labels]
         if class_idx is not None:
             class_labels[:, :] = 0
             class_labels[:, class_idx] = 1
@@ -305,7 +332,8 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx,
         sampler_kwargs = {key: value for key, value in sampler_kwargs.items() if value is not None}
         have_ablation_kwargs = any(x in sampler_kwargs for x in ['solver', 'discretization', 'schedule', 'scaling'])
         sampler_fn = ablation_sampler if have_ablation_kwargs else edm_sampler
-        images = sampler_fn(net, latents, class_labels, randn_like=rnd.randn_like, wo_last=wo_last, **sampler_kwargs)
+        with torch.no_grad():
+            images = sampler_fn(model_cons_forw, latents, labels, randn_like=rnd.randn_like, wo_last=wo_last, **sampler_kwargs)
 
         # Save images.
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
