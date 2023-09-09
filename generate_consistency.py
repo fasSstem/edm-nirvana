@@ -293,7 +293,7 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx,
     model_cons.eval()
     model_cons.cuda()
     model_cons.convert_to_fp32()
-    diff = KarrasDenoiser(sigma_data=0.5, sigma_max=80, sigma_min=0.002, distillation=False, weight_schedule='karras')
+    diff = KarrasDenoiser(sigma_data=0.5, sigma_max=80, sigma_min=0.002, distillation=False, weight_schedule='karras', loss_norm=None)
 
     def model_cons_forw(x_t, sigma, class_labels):
         sigma_fl = sigma[None].repeat(len(x_t))
