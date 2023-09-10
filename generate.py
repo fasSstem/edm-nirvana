@@ -324,6 +324,8 @@ def main(network_pkl, outdir, subdirs, subdirs_class, wo_last, seeds, class_idx,
             else:
                 PIL.Image.fromarray(image_np, 'RGB').save(image_path)
 
+    torch.distributed.barrier()
+
     # Copy images to nirvana snapshot path
     if dist.get_rank() == 0:
         nirvana_utils.copy_out_to_snapshot(outdir)
